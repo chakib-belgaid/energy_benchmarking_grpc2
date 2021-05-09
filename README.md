@@ -67,3 +67,9 @@ Other parameters will depend on your use-case. Choose wisely.
 You can find our sample results in the [Wiki](https://github.com/LesnyRumcajs/grpc_bench/wiki). Be sure to run the benchmarks yourself if you have sufficient hardware, especially for multi-core scenarios. 
 
 
+# TODO 
+
+- change the name of benchmaks in csv file
+- remove list domaines  
+- update list global domaines to list unamed domaines 
+- calculate the cost per request 

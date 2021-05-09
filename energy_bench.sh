@@ -6,7 +6,7 @@ BENCHMARKS_TO_RUN="${@}"
 BENCHMARKS_TO_RUN="${BENCHMARKS_TO_RUN:-$(find . -maxdepth 1 -name '*_bench' -type d | sort)}"
 
 SERVER_SOCKET="${SERVER_SOCKET:-0}"
-CLIENT_SOCKET="${SERVER_SOCKET:-1}"
+CLIENT_SOCKET="${CLIENT_SOCKET:-1}"
 
 # pin the client and trhe server into different sockets - using dual sockets machine
 GRPC_SERVER_CPUS=$(lscpu | egrep -e "NUMA node$SERVER_SOCKET" | awk -F ' ' '{printf $4}')
@@ -14,7 +14,7 @@ GRPC_CLIENT_CPUS=$(lscpu | egrep -e "NUMA node$CLIENT_SOCKET" | awk -F ' ' '{pri
 
 RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
 GRPC_BENCHMARK_ITERATIONS=${GRPC_BENCHMARK_DURATION:-"1"}
-GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"3s"}
+GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"200s"}
 GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
 GRPC_SERVER_RAM=${GRPC_SERVER_RAM:-"512m"}
 GRPC_CLIENT_CONNECTIONS=${GRPC_CLIENT_CONNECTIONS:-"5"}
@@ -159,6 +159,34 @@ list_domains() {
 	echo $domains
 }
 
+list_global_domains() {
+	dt=$1
+	dt=$(echo $dt | sed -r 's/package-([0-9]+)/cpu/g')
+	domains=$(echo | awk -v data=$dt 'BEGIN \
+    {
+        
+        split(data,data1,";");
+        for (line in data1 )  {
+            split(data1[line],line1,",");
+            path=line1[1];
+            name=line1[2];
+            value=line1[3];
+            split(path,path1,":")
+            cpu=path1[2]
+            split(cpu,cpu1,'//')
+            cpu=cpu1[1]
+            energies[name]=energies[name]+value
+        }
+        
+        asorti(energies,indices )
+         for (i in indices ) {
+           printf toupper(indices[i])";"
+        }
+    }')
+	domains="${domains%;}"
+	echo $domains
+}
+
 print_append_csv() {
 
 	energies=$(echo | awk -v data=$1 'BEGIN \
@@ -192,6 +220,7 @@ print_append_csv() {
 
 MAX_ENRERGY_SERVER=$(read_maxenergy $SERVER_SOCKET)
 MAX_ENRERGY_CLIENT=$(read_maxenergy $CLIENT_SOCKET)
+DOMAINES=$(read_maxenergy)
 
 # Let containers know how many CPUs they will be running on
 export GRPC_SERVER_CPUS
@@ -201,22 +230,25 @@ docker pull infoblox/ghz:0.0.1
 
 mkdir -p "${RESULTS_DIR}"
 
-header=$(list_domains $MAX_ENRERGY_SERVER)
+header=$(list_global_domains $DOMAINES)
 echo "benchmark;$header" >"${RESULTS_DIR}/energy_server.csv"
-header=$(list_domains $MAX_ENRERGY_CLIENT)
+# header=$(list_domains $MAX_ENRERGY_CLIENT)
 echo "benchmark;$header" >"${RESULTS_DIR}/energy_client.csv"
 
 for benchmark in ${BENCHMARKS_TO_RUN}; do
 	NAME="${benchmark##*/}"
 	echo "==> Running benchmark for ${NAME}..."
-	begins_server=$(read_energy $SERVER_SOCKET)
+	# begins_server=$(read_energy $SERVER_SOCKET)
 	docker run --name "${NAME}" --rm \
 		--cpuset-cpus "${GRPC_SERVER_CPUS}" \
 		--memory "${GRPC_SERVER_RAM}" \
 		-e GRPC_SERVER_CPUS \
 		--network=host --detach --tty "${NAME}" >/dev/null
+
 	sleep 5
+	## wait for the warmup
 	begins_client=$(read_energy $CLIENT_SOCKET)
+	begins_server=$(read_energy $SERVER_SOCKET)
 
 	./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
