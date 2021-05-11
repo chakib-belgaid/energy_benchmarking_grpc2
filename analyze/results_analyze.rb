@@ -59,11 +59,14 @@ CSV.foreach( "#{report_directory}/energy_server.csv",  { headers: true, :col_sep
   name = row1["benchmark"].sub! '_bench', ''
   results[name][:avg_power_cpu] = row1["CPU"].to_f./ (row1["DURATION"].to_f)
   results[name][:avg_power_dram] = row1["DRAM"].to_f./ (row1["DURATION"].to_f)
+  results[name][:total_power] = results[name][:avg_power_cpu].to_f.+results[name][:avg_power_dram].to_f
+  results[name][:energy_request]=results[name][:total_power].to_f./(results[name][:req_per_s].to_f).*1000
+  
 
 end
 
 
-make_horizontal_line = -> { puts '-' * 161 }
+make_horizontal_line = -> { puts '-' * 185 }
 make_data_line = lambda do |*args|
   puts "| #{args[0].to_s.ljust(18)} |" \
        "#{args[1].to_s.rjust(8)} |" \
@@ -75,10 +78,10 @@ make_data_line = lambda do |*args|
        "#{args[7].to_s.rjust(14)} |" \
        "#{args[8].to_s.rjust(15)} |" \
        "#{args[9].to_s.rjust(16)} |" \
-       
+       "#{args[10].to_s.rjust(22)} |" \
 end
 make_horizontal_line[]
-make_data_line['name', 'req/s', 'avg. latency', '90 % in', '95 % in', '99 % in', 'avg. cpu', 'avg. memory',"avg. power cpu","avg. power dram"]
+make_data_line['name', 'req/s', 'avg. latency', '90 % in', '95 % in', '99 % in', 'avg. cpu', 'avg. memory',"avg. power cpu","avg. power dram","avg requesets's energy"]
 make_horizontal_line[]
 results.sort_by { |_k, v| v[:req_per_s] }.reverse_each do |name, result|
   make_data_line[name,
@@ -90,7 +93,9 @@ results.sort_by { |_k, v| v[:req_per_s] }.reverse_each do |name, result|
                  result[:avg_cpu].round(2).to_s + '%',
                  result[:avg_mem].round(2).to_s + ' ' + result[:avg_mem_unit],
                  result[:avg_power_cpu].round(3).to_s + 'W',
-                 result[:avg_power_dram].round(3).to_s + 'W'
+                 result[:avg_power_dram].round(3).to_s + 'W',
+                 result[:energy_request].round(3).to_s + 'mJ'
+                 
                 ]
 end
 make_horizontal_line[]
