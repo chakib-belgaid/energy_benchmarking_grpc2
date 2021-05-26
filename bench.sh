@@ -6,7 +6,7 @@ BENCHMARKS_TO_RUN="${@}"
 BENCHMARKS_TO_RUN="${BENCHMARKS_TO_RUN:-$(find . -maxdepth 1 -name '*_bench' -type d | sort)}"
 
 RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
-GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"30s"}
+GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"5s"}
 GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
 GRPC_SERVER_RAM=${GRPC_SERVER_RAM:-"512m"}
 GRPC_CLIENT_CONNECTIONS=${GRPC_CLIENT_CONNECTIONS:-"5"}
@@ -20,7 +20,7 @@ GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
 export GRPC_SERVER_CPUS
 export GRPC_CLIENT_CPUS
 
-docker pull infoblox/ghz:0.0.1
+# docker pull infoblox/ghz:0.0.1
 
 for benchmark in ${BENCHMARKS_TO_RUN}; do
 	NAME="${benchmark##*/}"
@@ -37,15 +37,15 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro"\
 	    -v "${PWD}/payload:/payload:ro"\
 		--cpus $GRPC_CLIENT_CPUS \
-		--entrypoint=ghz infoblox/ghz:0.0.1 \
+		chakibmed/ghz:9.95 \
 		--proto=/proto/helloworld/helloworld.proto \
 		--call=helloworld.Greeter.SayHello \
         --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
-        --qps="${GRPC_CLIENT_QPS}" \
         --duration "${GRPC_BENCHMARK_DURATION}" \
         --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
+		-O "csv" \
 		127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report
 	cat "${RESULTS_DIR}/${NAME}".report | grep "Requests/sec" | sed -E 's/^ +/    /'
 
@@ -67,6 +67,6 @@ GRPC_CLIENT_CPUS=$GRPC_CLIENT_CPUS
 GRPC_REQUEST_PAYLOAD=$GRPC_REQUEST_PAYLOAD
 EOF
 
-sh analyze.sh $RESULTS_DIR
+# sh analyze.sh $RESULTS_DIR
 
 echo "All done."
