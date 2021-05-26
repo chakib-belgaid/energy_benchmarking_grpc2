@@ -13,6 +13,7 @@ GRPC_SERVER_CPUS=$(lscpu | egrep -e "NUMA node$SERVER_SOCKET" | awk -F ' ' '{pri
 GRPC_CLIENT_CPUS=$(lscpu | egrep -e "NUMA node$CLIENT_SOCKET" | awk -F ' ' '{printf $4}')
 
 RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
+HWPC_NAME=${RESULTS_DIR#*/}
 GRPC_BENCHMARK_ITERATIONS=${GRPC_BENCHMARK_DURATION:-"1"}
 GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"200s"}
 GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
@@ -231,9 +232,16 @@ docker pull infoblox/ghz:0.0.1
 mkdir -p "${RESULTS_DIR}"
 
 header=$(list_global_domains $DOMAINES)
-echo "benchmark;begin;end;$header" >"${RESULTS_DIR}/energy_server.csv"
+echo "name;begin;end;$header" >"${RESULTS_DIR}/energy_server.csv"
 # header=$(list_domains $MAX_ENRERGY_CLIENT)
-echo "benchmark;$header" >"${RESULTS_DIR}/energy_client.csv"
+echo "name;$header" >"${RESULTS_DIR}/energy_client.csv"
+
+RAPL_PATH=`pwd`"/"$RESULTS_DIR
+
+docker run --net=host --privileged --name powerapi-$HWPC_NAME --restart unless-stopped  -d            -v /sys:/sys -v /var/lib/docker/containers:/var/lib/docker/containers:ro            -v $RAPL_PATH:/reporting/   powerapi/hwpc-sensor:latest   -f 100         -n machine           -s rapl -e RAPL_ENERGY_PKG  -e RAPL_ENERGY_DRAM          -r csv -U /reporting/
+
+
+RAPL_HEADER=`head -n 1 $RAPL_PATH` 
 
 for benchmark in ${BENCHMARKS_TO_RUN}; do
 	NAME="${benchmark##*/}"
@@ -270,6 +278,8 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	cat "${RESULTS_DIR}/${NAME}".report | grep "Requests/sec" | sed -E 's/^ +/    /'
 	kill -INT %1 2>/dev/null
 	docker container stop "${NAME}" >/dev/null
+    mv $RAPL_PATH`/rapl` "${RESULTS_DIR}/${NAME}".rapl
+    echo $RAPL_HEADER > $RAPL_PATH`/rapl`
 	energies_server=$(calculate_energy $begins_server $ends_server $MAX_ENRERGY_SERVER)
 	energies_client=$(calculate_energy $begins_client $ends_client $MAX_ENRERGY_CLIENT)
 	energies_server=$(print_append_csv $energies_server)
@@ -279,6 +289,8 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	echo $NAME";"$begin_time";"$end_time";"$energies_client >>"${RESULTS_DIR}/energy_client.csv"
 
 done
+
+
 
 tee $RESULTS_DIR/bench.info <<EOF
 Benchmark info:
@@ -293,6 +305,8 @@ GRPC_CLIENT_QPS=$GRPC_CLIENT_QPS
 GRPC_CLIENT_CPUS=$GRPC_CLIENT_CPUS
 GRPC_REQUEST_PAYLOAD=$GRPC_REQUEST_PAYLOAD
 EOF
+
+docker stop powerapi-$HWPC_NAME >/dev/null
 
 sh analyze.sh $RESULTS_DIR
 
