@@ -15,11 +15,12 @@ GRPC_CLIENT_CPUS=$(lscpu | egrep -e "NUMA node$CLIENT_SOCKET" | awk -F ' ' '{pri
 RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
 HWPC_NAME=${RESULTS_DIR#*/}
 
-GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"250s"}
-GRPC_BENCHMARK_START=${GRPC_BENCHMARK_START:-"500"}
-GRPC_BENCHMARK_END=${GRPC_BENCHMARK_END:-"200000"}
-GRPC_BENCHMARK_STEP=${GRPC_BENCHMARK_STEP:-"2500"}
-GRPC_BENCHMARK_STEP_DURATION=${GRPC_BENCHMARK_DURATION:-"5s"}
+GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"10s"}
+GRPC_BENCHMARK_START=${GRPC_BENCHMARK_START:-"1"}
+GRPC_BENCHMARK_END=${GRPC_BENCHMARK_END:-"5000000"}
+GRPC_BENCHMARK_STEP=${GRPC_BENCHMARK_STEP:-"10000"}
+GRPC_BENCHMARK_STEP_DURATION=${GRPC_BENCHMARK_STEP_DURATION:-"10s"}
+GRPC_BENCHMARK_MAX_DURATION=${GRPC_BENCHMARK_MAX_DURATION:-"20s"}
 
 GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
 GRPC_SERVER_RAM=${GRPC_SERVER_RAM:-"512m"}
@@ -278,20 +279,21 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
     docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro" \
         -v "${PWD}/payload:/payload:ro" \
         --cpuset-cpus $GRPC_CLIENT_CPUS \
-        chakibmed/ghz:9.95 \
+        chakibmed/ghz:0.95 \
         --proto=/proto/helloworld/helloworld.proto \
         --call=helloworld.Greeter.SayHello \
+        --duration "${GRPC_BENCHMARK_DURATION}" \
         --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
-        --duration "${GRPC_BENCHMARK_DURATION}" \
-        --load-schedule="step" \
+        --load-schedule="line" \
         --load-start="${GRPC_BENCHMARK_START}" \
         --load-end="${GRPC_BENCHMARK_END}" \
         --load-step="${GRPC_BENCHMARK_STEP}" \
         --load-step-duration="${GRPC_BENCHMARK_STEP_DURATION}" \
         --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
-        -O "json" \
+        --name="${NAME}" \
+        -O "influx-details" \
         127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report
     ends_client=$(read_energy $CLIENT_SOCKET)
     ends_server=$(read_energy $SERVER_SOCKET)
@@ -327,4 +329,4 @@ EOF
 
 # sh analyze.sh $RESULTS_DIR
 
-echo "All done."
+echo "All done, results are saved in" $RESULTS_DIR
