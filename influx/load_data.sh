@@ -26,7 +26,7 @@ for i in $(ls /home/mbelgaid/grpc_bench/results/$dir/*.report); do
         -f $FILE
 
     FILE="/results/$dir/$name.rapl"
-    docker exec -it influxdb \
+    docker exec -it influxdb \\
         influx write \
         -b $bucketname \
         -o spirals \
