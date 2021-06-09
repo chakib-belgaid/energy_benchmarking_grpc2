@@ -12,7 +12,9 @@ CLIENT_SOCKET="${CLIENT_SOCKET:-1}"
 GRPC_SERVER_CPUS=$(lscpu | egrep -e "NUMA node$SERVER_SOCKET" | awk -F ' ' '{printf $4}')
 GRPC_CLIENT_CPUS=$(lscpu | egrep -e "NUMA node$CLIENT_SOCKET" | awk -F ' ' '{printf $4}')
 
-RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
+DEFAULT_RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
+RESULTS_DIR=${RESULTS_DIR:-$DEFAULT_RESULTS_DIR}
+
 HWPC_NAME=${RESULTS_DIR#*/}
 
 ### stop creterion
