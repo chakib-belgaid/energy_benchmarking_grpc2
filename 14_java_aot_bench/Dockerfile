@@ -1,7 +1,7 @@
 FROM ghcr.io/graalvm/graalvm-ce:ol8-java11-19.3.5 as rel
 
 WORKDIR /app
-COPY 6_java_micronaut_bench /app
+COPY 06_java_micronaut_bench /app
 COPY proto/helloworld/helloworld.proto /app/src/main/proto/helloworld.proto
 
 RUN /app/gradlew assemble

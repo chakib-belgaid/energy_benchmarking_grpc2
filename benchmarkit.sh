@@ -294,9 +294,9 @@ export GRPC_CLIENT_CPUS
 mkdir -p "${RESULTS_DIR}"
 
 header=$(list_global_domains $DOMAINES)
-echo "name;begin;end;$header" >"${RESULTS_DIR}/energy_server.csv"
+ls "${RESULTS_DIR}/energy_server.csv" 1>/dev/null 2>/dev/null || echo "name;begin;end;$header" >"${RESULTS_DIR}/energy_server.csv"
 # header=$(list_domains $MAX_ENRERGY_CLIENT)
-echo "name;$header" >"${RESULTS_DIR}/energy_client.csv"
+ls "${RESULTS_DIR}/energy_client.csv" 1>/dev/null 2>/dev/null || echo "name;$header" >"${RESULTS_DIR}/energy_client.csv"
 
 run_hwpc() {
     RESULTS_DIR=$1
@@ -351,7 +351,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --load-step-duration="${GRPC_BENCHMARK_STEP_DURATION}" \
         --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
         --name="${NAME}" \
-        --format="csv" \
+        --format="seperate" \
         --output="/${RESULTS_DIR}/${NAME}".Requests.csv \
         $GRPC_EXTRA_OPTIONS \
         127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report.json
