@@ -10,23 +10,23 @@ codegen-units = 1
 lto = true
 
 [dependencies]
-async-trait = "0.1"
-bytes = "0.5.3"
-dotenv = "0.13.0"
-env_logger = "0.7.1"
-log = "0.4"
-hyper = "0.13.1"
-http = "0.2"
-http-body = "0.3.1"
-prost = "0.6"
-thruster = { version = "1.0.0", features = ["hyper_server"] }
+async-trait = "0.1.50"
+bytes = "1.0.1"
+dotenv = "0.15.0"
+env_logger = "0.8.3"
+log = "0.4.14"
+hyper = "0.14.9"
+http = "0.2.4"
+http-body = "0.4.2"
+prost = "0.7.0"
+thruster = { version = "1.1.4", features = ["hyper_server"] }
 thruster-grpc = { git = "https://github.com/thruster-rs/thruster-grpc" }
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1.6.1", features = ["full"] }
 
-futures = "0.3.5"
+futures = "0.3.15"
 
 [build-dependencies]
-prost-build = "0.6"
+prost-build = "0.7"
 
 [[bin]]
 name = "helloworld-server"
