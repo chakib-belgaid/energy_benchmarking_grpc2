@@ -14,8 +14,8 @@ GRPC_CLIENT_CPUS=$(lscpu | egrep -e "NUMA node$CLIENT_SOCKET" | awk -F ' ' '{pri
 
 DEFAULT_RESULTS_DIR="results/$(date '+%y%d%mT%H%M%S')"
 RESULTS_DIR=${RESULTS_DIR:-$DEFAULT_RESULTS_DIR}
-
 HWPC_NAME=${RESULTS_DIR#*/}
+RECAP_FILE=$RESULTS_DIR/benchinfo.json
 
 ### stop creterion
 GRPC_BENCHMARK_STOP_CRETERION=${GRPC_BENCHMARK_STOP_CRETERION:-"duration"}
@@ -38,6 +38,9 @@ GRPC_CLIENT_CONCURRENCY=${GRPC_CLIENT_CONCURRENCY:-"50"}
 GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
 GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
 
+### HWPC Sensor Parameters
+HWPC_DURATION=${HWPC_DURATION-"1000"}
+
 # Adding the energy functions
 GRPC_EXTRA_OPTIONS=""
 
@@ -55,6 +58,37 @@ if [ -n "$GRPC_RPS" ]; then
 else
     GRPC_RPS="None"
 fi
+
+############# print Recaps
+
+print_recap() {
+    ### print the recap in a json format
+    echo '{'
+    echo '"stop_creterion"' :\"$GRPC_BENCHMARK_STOP_CRETERION\" ,
+    echo '"benchmark_duration"' :\"$GRPC_BENCHMARK_DURATION\",
+    echo '"total_requests"' :$GRPC_BENCHMARK_MAX_REQUESTS ,
+    if [ -n "$rps" ]; then
+        echo '"rps"' :$GRPC_RPS ,
+    fi
+    echo '"mode"' :\"$GRPC_BENCHMARK_MODE\" ,
+    echo '"startT"' :$GRPC_BENCHMARK_START ,
+    echo '"end"' :$GRPC_BENCHMARK_END ,
+    echo '"step"' :$GRPC_BENCHMARK_STEP ,
+    echo '"step_duration"' : \"$GRPC_BENCHMARK_STEP_DURATION\" ,
+    echo '"server_cpus"' : '[' $GRPC_SERVER_CPUS ']',
+    echo '"server_ram"' :\"$GRPC_SERVER_RAM\" ,
+    echo '"client_connections"' :$GRPC_CLIENT_CONNECTIONS ,
+    echo '"client_concurrency"' :$GRPC_CLIENT_CONCURRENCY ,
+    echo '"client_cpus"' :'['$GRPC_CLIENT_CPUS ']',
+    echo '"payload"' :\"$GRPC_REQUEST_PAYLOAD\" ,
+    freq=$(echo $HWPC_DURATION | awk -v freq=$HWPC_DURATION "{print 1000/freq}")
+    echo '"hwpc_frequency"' : $freq ,
+    benchnames=${benchnames%,*}
+    echo '"benchmarks"' : '[' $benchnames ']'
+    echo '}'
+}
+
+##############
 
 read_energy() {
 
@@ -268,7 +302,7 @@ run_hwpc() {
     RESULTS_DIR=$1
     RAPL_PATH=$(pwd)"/"$RESULTS_DIR
     HWPC_NAME=$2
-    docker run --net=host --privileged --name powerapi-$HWPC_NAME -d --rm -v /sys:/sys -v /var/lib/docker/containers:/var/lib/docker/containers:ro -v $RAPL_PATH:/reporting/ powerapi/hwpc-sensor:latest -n machine -s rapl -e RAPL_ENERGY_PKG -e RAPL_ENERGY_DRAM -r csv -U /reporting/
+    docker run --net=host --privileged --name powerapi-$HWPC_NAME -d --rm -v /sys:/sys -v /var/lib/docker/containers:/var/lib/docker/containers:ro -v $RAPL_PATH:/reporting/ powerapi/hwpc-sensor:latest -n machine -s rapl -e RAPL_ENERGY_PKG -e RAPL_ENERGY_DRAM -r csv -U /reporting/ -f $HWPC_DURATION
     echo powerapi-$HWPC_NAME
 }
 
@@ -279,9 +313,10 @@ stop_hwpc() {
     docker stop powerapi-$HWPC_NAME >/dev/null
     mv "$RAPL_PATH/rapl" "$RAPL_PATH/$HWPC_NAME.rapl"
 }
-
+benchnames=()
 for benchmark in ${BENCHMARKS_TO_RUN}; do
     NAME="${benchmark##*/}"
+    benchnames+=\"$NAME\"','
     echo "==> Running benchmark for ${NAME}..."
     run_hwpc $RESULTS_DIR $NAME
     # begins_server=$(read_energy $SERVER_SOCKET)
@@ -319,12 +354,12 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --format="csv" \
         --output="/${RESULTS_DIR}/${NAME}".Requests.csv \
         $GRPC_EXTRA_OPTIONS \
-        127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report
+        127.0.0.1:50051 >"${RESULTS_DIR}/${NAME}".report.json
 
     ends_client=$(read_energy $CLIENT_SOCKET)
     ends_server=$(read_energy $SERVER_SOCKET)
     end_time=$(date +"%s%6N")
-    cat "${RESULTS_DIR}/${NAME}".report | grep "Requests/sec" | sed -E 's/^ +/    /'
+    # cat "${RESULTS_DIR}/${NAME}".report. | grep "Requests/sec" | sed -E 's/^ +/    /'
     kill -INT %1 2>/dev/null
     docker container stop "${NAME}" >/dev/null
     stop_hwpc $RESULTS_DIR $NAME
@@ -339,32 +374,6 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 
 done
 
-tee $RESULTS_DIR/bench.info <<EOF
-
-Benchmark info:
-$(git log -1 --pretty="%h %cD %cn %s")
-Benchmarks run: $BENCHMARKS_TO_RUN
-
-GRPC_BENCHMARK_STOP_CRETERION=$GRPC_BENCHMARK_STOP_CRETERION
-GRPC_BENCHMARK_DURATION=$GRPC_BENCHMARK_DURATION
-GRPC_BENCHMARK_MAX_REQUESTS=$GRPC_BENCHMARK_MAX_REQUESTS
-GRPC_RPS=$GRPC_RPS
-
-GRPC_BENCHMARK_MODE=$GRPC_BENCHMARK_MODE
-GRPC_BENCHMARK_START=$GRPC_BENCHMARK_START
-GRPC_BENCHMARK_END=$GRPC_BENCHMARK_END
-GRPC_BENCHMARK_STEP=$GRPC_BENCHMARK_STEP
-GRPC_BENCHMARK_STEP_DURATION=$GRPC_BENCHMARK_STEP_DURATION
-
-GRPC_SERVER_CPUS=$GRPC_SERVER_CPUS
-GRPC_SERVER_RAM=$GRPC_SERVER_RAM
-GRPC_CLIENT_CONNECTIONS=$GRPC_CLIENT_CONNECTIONS
-GRPC_CLIENT_CONCURRENCY=$GRPC_CLIENT_CONCURRENCY
-GRPC_CLIENT_CPUS=$GRPC_CLIENT_CPUS
-GRPC_REQUEST_PAYLOAD=$GRPC_REQUEST_PAYLOAD
-
-EOF
-
 # sh analyze.sh $RESULTS_DIR
-
+print_recap >$RECAP_FILE
 echo "All done, results are saved in" $RESULTS_DIR

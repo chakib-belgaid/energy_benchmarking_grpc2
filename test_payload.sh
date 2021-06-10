@@ -7,7 +7,7 @@
 ### Variant payload
 export GRPC_BENCHMARK_MODE="const"
 export GRPC_BENCHMARK_STOP_CRETERION="numberOfRequests"
-export GRPC_BENCHMARK_MAX_REQUESTS=1000
+export GRPC_BENCHMARK_MAX_REQUESTS=100000
 
 DEFAULT_RESULTS_DIR="results/payloads_$(date '+%y%d%mT%H%M%S')"
 
