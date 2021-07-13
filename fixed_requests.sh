@@ -1,6 +1,6 @@
 #! /bin/bash
 
-export GRPC_BENCHMARK_MODE="const"
+export GRPC_WORKLOAD_MODE="const"
 export GRPC_BENCHMARK_STOP_CRETERION="numberOfRequests"
 export GRPC_BENCHMARK_DURATION="5s"
 export GRPC_BENCHMARK_MAX_REQUESTS=100

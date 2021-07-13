@@ -23,20 +23,35 @@ GRPC_BENCHMARK_DURATION=${GRPC_BENCHMARK_DURATION:-"200s"}
 GRPC_BENCHMARK_MAX_REQUESTS=${GRPC_BENCHMARK_MAX_REQUESTS:-"1000000000"}
 
 ### workload behaviour
-GRPC_BENCHMARK_MODE=${GRPC_BENCHMARK_MODE:-"const"}
-GRPC_BENCHMARK_START=${GRPC_BENCHMARK_START:-"1"}
-GRPC_BENCHMARK_END=${GRPC_BENCHMARK_END:-"200000"}
-GRPC_BENCHMARK_STEP=${GRPC_BENCHMARK_STEP:-"10000"}
 
-GRPC_BENCHMARK_STEP_DURATION=${GRPC_BENCHMARK_STEP_DURATION:-"10s"}
+GRPC_WORKLOAD_MODE=${GRPC_WORKLOAD_MODE:-"const"} # const, step, or line. Default is const
+GRPC_WORKLOAD_START=${GRPC_WORKLOAD_START:-"1"}
+GRPC_WORKLOAD_END=${GRPC_WORKLOAD_END:-"200000"}
+GRPC_WORKLOAD_STEP=${GRPC_WORKLOAD_STEP:-"10000"}
+GRPC_WORKLOAD_STEP_DURATION=${GRPC_WORKLOAD_STEP_DURATION:-"10s"}
 
-### workload payload
+### message size 
+GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
+
+### client concurrency behaviour 
+GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
+
+GRPC_CLIENT_CONCURRENCY_SCHEDULE=${GRPC_CLIENT_CONCURRENCY_SCHEDULE:-"const"} # const, step, or line. Default is const
+GRPC_CLIENT_CONCURRENCY_START=${GRPC_CLIENT_CONCURRENCY_START:-"5"}
+GRPC_CLIENT_CONCURRENCY_END=${GRPC_CLIENT_CONCURRENCY_END:-"50"}
+GRPC_CLIENT_CONCURRENCY_STEP=${GRPC_CLIENT_CONCURRENCY_STEP:-"5"}
+GRPC_CLIENT_CONCURRENCY_STEP_DURATION=${GRPC_CLIENT_CONCURRENCY_STEP_DURATION:-"10s"}
+
+GRPC_CLIENT_CONCURRENCY=${GRPC_CLIENT_CONCURRENCY:-"50"} # when the mode is cosnst 
+GRPC_CLIENT_CONNECTIONS=${GRPC_CLIENT_CONNECTIONS:-$GRPC_CLIENT_CONCURRENCY} # shared between all the clients 
+
+
+
+### Server configuration  
 GRPC_SERVER_CPUS=${GRPC_SERVER_CPUS:-"1"}
 GRPC_SERVER_RAM=${GRPC_SERVER_RAM:-"512m"}
-GRPC_CLIENT_CONNECTIONS=${GRPC_CLIENT_CONNECTIONS:-"5"}
-GRPC_CLIENT_CONCURRENCY=${GRPC_CLIENT_CONCURRENCY:-"50"}
-GRPC_CLIENT_CPUS=${GRPC_CLIENT_CPUS:-"1"}
-GRPC_REQUEST_PAYLOAD=${GRPC_REQUEST_PAYLOAD:-"100B"}
+
+
 
 ### HWPC Sensor Parameters
 HWPC_DURATION=${HWPC_DURATION-"1000"}
@@ -70,16 +85,21 @@ print_recap() {
     if [ -n "$rps" ]; then
         echo '"rps"' :$GRPC_RPS ,
     fi
-    echo '"mode"' :\"$GRPC_BENCHMARK_MODE\" ,
-    echo '"startT"' :$GRPC_BENCHMARK_START ,
-    echo '"end"' :$GRPC_BENCHMARK_END ,
-    echo '"step"' :$GRPC_BENCHMARK_STEP ,
-    echo '"step_duration"' : \"$GRPC_BENCHMARK_STEP_DURATION\" ,
-    echo '"server_cpus"' : '[' $GRPC_SERVER_CPUS ']',
-    echo '"server_ram"' :\"$GRPC_SERVER_RAM\" ,
+    echo '"workload_mode"' :\"$GRPC_WORKLOAD_MODE\" ,
+    echo '"workload_startT"' :$GRPC_WORKLOAD_START ,
+    echo '"workload_end"' :$GRPC_WORKLOAD_END ,
+    echo '"workload_step"' :$GRPC_WORKLOAD_STEP ,
+    echo '"workload_step_duration"' : \"$GRPC_WORKLOAD_STEP_DURATION\" ,
+    echo 'concurrency_mode' : \"$GRPC_CLIENT_CONCURRENCY_SCHEDULE\",
+    echo 'concurrency_start' : $GRPC_CLIENT_CONCURRENCY_START,
+    echo 'concurrency_end' : $GRPC_CLIENT_CONCURRENCY_END,
+    echo 'concurrency_step' : $GRPC_CLIENT_CONCURRENCY_STEP,
+    echo 'concurrency_step_duration' : \"$GRPC_CLIENT_CONCURRENCY_STEP_DURATION\",
     echo '"client_connections"' :$GRPC_CLIENT_CONNECTIONS ,
     echo '"client_concurrency"' :$GRPC_CLIENT_CONCURRENCY ,
     echo '"client_cpus"' :'['$GRPC_CLIENT_CPUS ']',
+    echo '"server_cpus"' : '[' $GRPC_SERVER_CPUS ']',
+    echo '"server_ram"' :\"$GRPC_SERVER_RAM\" ,
     echo '"payload"' :\"$GRPC_REQUEST_PAYLOAD\" ,
     freq=$(echo $HWPC_DURATION | awk -v freq=$HWPC_DURATION "{print 1000/freq}")
     echo '"hwpc_frequency"' : $freq ,
@@ -344,12 +364,17 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
-        --load-schedule=${GRPC_BENCHMARK_MODE} \
-        --load-start="${GRPC_BENCHMARK_START}" \
-        --load-end="${GRPC_BENCHMARK_END}" \
-        --load-step="${GRPC_BENCHMARK_STEP}" \
-        --load-step-duration="${GRPC_BENCHMARK_STEP_DURATION}" \
+        --load-schedule=${GRPC_WORKLOAD_MODE} \
+        --load-start="${GRPC_WORKLOAD_START}" \
+        --load-end="${GRPC_WORKLOAD_END}" \
+        --load-step="${GRPC_WORKLOAD_STEP}" \
+        --load-step-duration="${GRPC_WORKLOAD_STEP_DURATION}" \
         --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
+        --concurrency-schedule="${GRPC_CLIENT_CONCURRENCY_SCHEDULE}" \
+        --concurrency-start="${GRPC_CLIENT_CONCURRENCY_START}" \
+        --concurrency-end="${GRPC_CLIENT_CONCURRENCY_END}" \
+        --concurrency-step=1="${GRPC_CLIENT_CONCURRENCY_STEP}" \
+        --concurrency-step-duration="${GRPC_CLIENT_CONCURRENCY_STEP_DURATION}" \
         --name="${NAME}" \
         --format="seperate" \
         --output="/${RESULTS_DIR}/${NAME}".Requests.csv \

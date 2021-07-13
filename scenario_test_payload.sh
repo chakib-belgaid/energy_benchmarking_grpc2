@@ -5,7 +5,7 @@
 ### unlimited duration
 ### Constant connections
 ### Variant payload
-export GRPC_BENCHMARK_MODE="const"
+export GRPC_WORKLOAD_MODE="const"
 export GRPC_BENCHMARK_STOP_CRETERION="numberOfRequests"
 export GRPC_BENCHMARK_MAX_REQUESTS=100000
 
