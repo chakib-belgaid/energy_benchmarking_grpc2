@@ -373,7 +373,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --concurrency-schedule="${GRPC_CLIENT_CONCURRENCY_SCHEDULE}" \
         --concurrency-start="${GRPC_CLIENT_CONCURRENCY_START}" \
         --concurrency-end="${GRPC_CLIENT_CONCURRENCY_END}" \
-        --concurrency-step=1="${GRPC_CLIENT_CONCURRENCY_STEP}" \
+        --concurrency-step="${GRPC_CLIENT_CONCURRENCY_STEP}" \
         --concurrency-step-duration="${GRPC_CLIENT_CONCURRENCY_STEP_DURATION}" \
         --name="${NAME}" \
         --format="seperate" \

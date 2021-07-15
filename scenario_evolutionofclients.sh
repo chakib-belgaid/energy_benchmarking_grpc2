@@ -1,0 +1,16 @@
+#! /bin/bash
+# fixed payload 
+# fixed rps 
+# evoltion of clients 
+
+export GRPC_REQUEST_PAYLOAD="1KB"
+export HWPC_DURATION=100 
+export GRPC_CLIENT_CONNECTIONS=5
+export GRPC_CLIENT_CONCURRENCY_SCHEDULE="step"
+export GRPC_CLIENT_CONCURRENCY_START=1
+export GRPC_CLIENT_CONCURRENCY_END=200 
+export GRPC_CLIENT_CONCURRENCY_STEP=2
+export GRPC_CLIENT_CONCURRENCY_STEP_DURATION="5s"
+export GRPC_BENCHMARK_DURATION="220s"
+
+./benchmarkit.sh $@

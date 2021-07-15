@@ -2,6 +2,7 @@
 
 ## The list of benchmarks to build
 BENCHMARKS_TO_BUILD="${@}"
+docker pull powerapi/hwpc-sensor:latest
 docker build -t chakibmed/ghz:1.0 client_ghz
 ##  ...or use all the *_bench dirs by default
 BENCHMARKS_TO_BUILD="${BENCHMARKS_TO_BUILD:-$(find . -maxdepth 1 -name '*_bench' -type d | sort)}"
